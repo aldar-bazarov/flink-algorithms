@@ -1,0 +1,25 @@
+def run_single_output_algorithm(config, calculate_result):
+    flink = создать_flink()
+
+    input_stream = подключить_kafka(config.RawTopic)
+    additional_streams = подключить_дополнительные_топики()
+
+    state = создать_состояние_flink()
+
+    for message in input_stream:
+        проверить_сообщение(message)
+        поставить_статус_processing()
+
+        result, status = calculate_result(
+            теги_сообщения,
+            состояния_дополнительных_потоков,
+            основное_состояние,
+        )
+
+        if status == Done:
+            отправить_результат_в_kafka(result)
+            поставить_статус_done()
+        else:
+            поставить_соответствующий_статус()
+
+    flink.execute()

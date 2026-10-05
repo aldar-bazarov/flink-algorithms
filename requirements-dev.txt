@@ -1,0 +1,8 @@
+# Runtime dependencies used by algorithms/utils/algorithm_skeleton_new.py
+apache-flink==2.3.0
+opensearch-py==3.0.0
+psycopg2-binary==2.9.13
+
+# Local development tools
+pytest==9.1.1
+ruff==0.16.10
