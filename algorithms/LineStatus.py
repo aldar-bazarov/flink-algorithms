@@ -374,8 +374,11 @@ def calculate_result(
 ):
     emit_kafka_read_metric(details_by_tag)
 
-    counter_detail = details_by_tag[JobConfig.CounterTag]
-    cip_active_detail = details_by_tag[JobConfig.CIPActiveTag]
+    counter_detail = details_by_tag.get(JobConfig.CounterTag)
+    cip_active_detail = details_by_tag.get(JobConfig.CIPActiveTag)
+
+    if not isinstance(counter_detail, dict) or not isinstance(cip_active_detail, dict):
+        return None, AlgorithmStateStatus.NotAllNecessary
 
     try:
         current_timestamp = get_max_timestamp_from_details([counter_detail, cip_active_detail])
@@ -428,12 +431,18 @@ def calculate_result(
         MAIN_HISTORY_WINDOW_SECONDS,
     )
 
+    source_type = details_by_tag.get("source_type")
+    plant_id = details_by_tag.get("plant_id")
+
+    if not isinstance(source_type, str) or not isinstance(plant_id, str):
+        return None, AlgorithmStateStatus.NotAllNecessary
+
     res_raw = build_raw_result(
         current_timestamp_iso,
         JobConfig.OutputTag,
         mode,
-        details_by_tag["source_type"] + JobConfig.ConstPostfixNorm,
-        details_by_tag["plant_id"],
+        source_type + JobConfig.ConstPostfixNorm,
+        plant_id,
         object_id=JobConfig.ObjectId,
         quality=counter_detail.get("Quality", ""),
     )
