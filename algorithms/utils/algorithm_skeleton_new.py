@@ -82,6 +82,7 @@ class SingleOutputAlgorithmConfig:
     CheckpointDir: str = "/usr/share/flink/flink-checkpoints"
     SavepointDir: str = "/usr/share/flink/flink-savepoints"
     StartFrom: str = "latest"
+    SourceType: str = ""
     ObjectId: str = ""
     InputTags: tuple[str, ...] = ()
     # Пустой список означает расчет при каждом входном теге.
@@ -272,26 +273,39 @@ class BaseAlgorithmProcessor:
         self._allowed_sink_names = set(allowed_sink_names)
         self._input_tags = set(algorithm_config.InputTags)
         self._trigger_tags = set(algorithm_config.TriggerTags) or self._input_tags
+        self._source_type = str(algorithm_config.SourceType or "").strip()
+        self._object_id = str(algorithm_config.ObjectId or "").strip()
         if not self._input_tags:
             raise ValueError("Не заданы входные теги алгоритма (InputTags)")
         if not self._trigger_tags <= self._input_tags:
             raise ValueError("TriggerTags должны входить в InputTags")
-        if not str(algorithm_config.ObjectId or "").strip():
-            raise ValueError("Не задан ObjectId результата алгоритма")
+        if not self._source_type:
+            raise ValueError("Не задан SourceType входных сообщений алгоритма")
+        if not self._object_id:
+            raise ValueError("Не задан ObjectId входных сообщений и результата алгоритма")
 
     def process_main(self, value: str, source_states: dict, main_state: dict):
         try:
             event = json.loads(value)
         except (TypeError, ValueError):
             return
-        if not isinstance(event, dict) or not isinstance(event.get("Tags"), list):
+        if not isinstance(event, dict):
+            return
+
+        event_source_type = str(event.get("SourceType") or "").strip()
+        event_object_id = str(event.get("ObjectId") or "").strip()
+        if event_source_type != self._source_type or event_object_id != self._object_id:
+            return
+
+        tags = event.get("Tags")
+        if not isinstance(tags, list):
             return
 
         stream_key = json_dumps([event.get(field) for field in self._algorithm_config.StateKeyFields])
         # Не создаем состояние для пакетов, в которых нет нужных тегов.
         stream_state = None
         batches = {}
-        for tag in event["Tags"]:
+        for tag in tags:
             if not isinstance(tag, dict):
                 continue
             tag_name = tag.get("FullName")
