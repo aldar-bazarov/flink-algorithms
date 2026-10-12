@@ -1,3 +1,5 @@
+import math
+
 from utils.algorithm_skeleton_new import (
     AlgorithmStateStatus,
     KafkaSinkMessage,
@@ -48,7 +50,7 @@ CONFIG = SingleOutputAlgorithmConfig(
     StartFrom="earliest",
     ObjectId=JobConfig.ObjectId,
     SourceType="HISTORIAN_POWER_ELECTRICITY_METER",
-    # Каждый входной тег запускает расчет, когда известны оба значения.
+    # Каждое новое показание сравнивается с предыдущим для этого потока.
     InputTags=(JobConfig.InputTagElectricity,),
 )
 
@@ -67,15 +69,20 @@ def calculate_result(
 
     electricity = to_float(detail.get("Value"))
 
-    if electricity is None:
+    if electricity is None or not math.isfinite(electricity):
         return None, AlgorithmStateStatus.NotAllNecessary
+
+    previous_value = to_float(main_state.get("previous_value"))
+    main_state["previous_value"] = electricity
+    if previous_value is None or not math.isfinite(previous_value):
+        return None, AlgorithmStateStatus.Done
 
     timestamp = format_timestamp_millis(get_max_timestamp_from_details([detail]))
 
     result = build_raw_result(
         timestamp=timestamp,
         tag=JobConfig.OutputTagElectricity,
-        value=electricity * 2,
+        value=electricity - previous_value,
         source_type=source_type + JobConfig.ConstPostfixNorm,
         plant_id=plant_id,
         object_id=JobConfig.ObjectId,
