@@ -11,24 +11,22 @@ from utils.algorithm_skeleton_new import (
     to_float,
 )
 
-
 class JobConfig:
-    GroupId = "ElectricityMeters_Электросчётчики"
-    JobName = "ElectricityMeters_Электросчётчики"
-    AlgorithmID = "688f2143-1e97-4f5c-9449-7ac6f1fc7484"
+    GroupId = "<<StreamAlgorithm.Code>>_<<StreamAlgorithmInstance.Name>>"
+    JobName = "<<StreamAlgorithm.Code>>_<<StreamAlgorithmInstance.Name>>"
+    AlgorithmID = "<<StreamAlgorithmInstance.ID>>"
 
     # Отдельное имя не дает старой настройке RawTopic менеджера заменить этот топик.
-    ProcessingTopic = "lab.tag.processing"
-    ResultTopic = "lab.tag.store"
-    BootstrapServer = "10.178.9.232:9092,10.178.9.235:9092"
-    MasterTopic = "lab.md.processing"
+    ProcessingTopic = "<<SystemNode.KafkaPrefix>>.tag.processing"
+    ResultTopic = "<<SystemNode.KafkaPrefix>>.tag.store"
+    BootstrapServer = "<<SystemNode.KafkaServer>>"
+    MasterTopic = "<<SystemNode.KafkaPrefix>>.md.processing"
 
     # Теги в соответствии с настройками алгоритма
-    OutputTagElectricity = "5109.UTIL.ELEC.RU04.TP03.8.A+Eres_NORM"
-    InputTagElectricity = "5109.UTIL.ELEC.RU04.TP03.8.A+Eres"
+    <<TAGS>>
 
     # Эти значения задаются для конкретной линии
-    ObjectId = "e090beca-388b-49e8-96d4-96f98e2122a6"
+    ObjectId = "<<StreamAlgorithmInstance.ObjectID>>"
 
     CheckpointIntervalMs = 30_000
     CheckpointDir = "/usr/share/flink/flink-checkpoints"
@@ -50,7 +48,6 @@ CONFIG = SingleOutputAlgorithmConfig(
     StartFrom="earliest",
     ObjectId=JobConfig.ObjectId,
     SourceType="HISTORIAN_POWER_ELECTRICITY_METER",
-    # Каждое новое показание сравнивается с предыдущим для этого потока.
     InputTags=(JobConfig.InputTagElectricity,),
 )
 
@@ -64,7 +61,11 @@ def calculate_result(
     source_type = details_by_tag.get("source_type")
     plant_id = details_by_tag.get("plant_id")
 
-    if not isinstance(detail, dict) or not isinstance(source_type, str) or not isinstance(plant_id, str):
+    if (
+        not isinstance(detail, dict)
+        or not isinstance(source_type, str)
+        or not isinstance(plant_id, str)
+    ):
         return None, AlgorithmStateStatus.NotAllNecessary
 
     electricity = to_float(detail.get("Value"))
